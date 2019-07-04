@@ -40,6 +40,9 @@ class Camera(object):
         time.sleep(duration)
         self.api_call('ptzStopRun')
 
+    def goto_scene(self, scene):
+        self.api_call('ptzGotoPresetPoint', name=scene)
+
 
 class FoscamControl(object):
     def __init__(self, config_file):
@@ -68,16 +71,19 @@ class FoscamControl(object):
             return
         action = body.decode('utf-8')
         logger.info('Got action [%s] for camera [%s]', action, camera)
-        if action.startswith('move_'):
-            direction = action[5:]
-            if direction in ('up', 'down'):
-                duration = 0.5
-            else:
-                duration = 1.5
-            try:
+        try:
+            if action.startswith('move_'):
+                direction = action[5:]
+                if direction in ('up', 'down'):
+                    duration = 0.5
+                else:
+                    duration = 1.5
                 camera.perform_move(direction, duration)
-            except Exception as e:
-                logger.exception('Error performing action', exc_info=e)
+            if action.startswith('scene_'):
+                scene = action[6:]
+                camera.goto_scene(scene)
+        except Exception as e:
+            logger.exception('Error performing action', exc_info=e)
 
     def get_camera(self, routing_key: str):
         camera_name = routing_key.rsplit('.', 1)[-1]
@@ -87,5 +93,5 @@ class FoscamControl(object):
 
 
 if __name__ == '__main__':
-    control = FoscamControl('config.ini')
+    control = FoscamControl(sys.argv[1])
     control.run()
